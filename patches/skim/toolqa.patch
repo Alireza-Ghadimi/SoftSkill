@@ -1,0 +1,255 @@
+diff --git a/code/skillrag_vendor/toolqa/react.py b/code/skillrag_vendor/toolqa/react.py
+index c7674ec..668edb6 100644
+--- a/code/skillrag_vendor/toolqa/react.py
++++ b/code/skillrag_vendor/toolqa/react.py
+@@ -110,7 +110,7 @@ class ReActAgent:
+         system, base_user = build_prompt(inst, method="naive")
+ 
+         if self.method != "naive" and (self.skills or self.skill_ids):
+-            if self.skill_mode == "compress" and self.skill_ids:
++            if self.skill_mode in {"compress", "softskill_init"} and self.skill_ids:
+                 skill_block = "\n---\n".join([f"<skill>{sid}</skill>" for sid in self.skill_ids])
+             else:
+                 skill_block = "\n---\n".join(self.skills)
+diff --git a/code/skillrag_vendor/toolqa/tools/text.py b/code/skillrag_vendor/toolqa/tools/text.py
+index 238a1a0..0197db2 100644
+--- a/code/skillrag_vendor/toolqa/tools/text.py
++++ b/code/skillrag_vendor/toolqa/tools/text.py
+@@ -1,6 +1,7 @@
+ """Text retrieval tools for ToolQA."""
+ 
+ import hashlib
++import os
+ import json
+ import threading
+ import time
+@@ -38,7 +39,7 @@ def _compute_cache_path(corpus_path: Path, model_name: str) -> Path:
+     """Compute the embeddings cache file path."""
+     corpus_hash = hashlib.md5(str(corpus_path).encode()).hexdigest()[:8]
+     model_hash = hashlib.md5(model_name.encode()).hexdigest()[:8]
+-    cache_dir = Path.home() / ".cache" / "toolqa_embeddings"
++    cache_dir = Path(os.environ.get("TOOLQA_EMBED_CACHE_DIR", str(Path.home() / ".cache" / "toolqa_embeddings")))
+     cache_dir.mkdir(parents=True, exist_ok=True)
+     return cache_dir / f"embed_{corpus_hash}_{model_hash}.npz"
+ 
+diff --git a/code/skim_inference.py b/code/skim_inference.py
+index 25bbc0b..dfba3dd 100644
+--- a/code/skim_inference.py
++++ b/code/skim_inference.py
+@@ -779,10 +779,12 @@ def generate_with_skills(
+     bad_words_ids: list[list[int]] | None = None,
+     prefix_token_ids: list[int] | None = None,
+     skill_pad_repeat: bool = False,
++    stop_strings: list[str] | None = None,
++    softskill_init: str = "",
+ ) -> tuple[str, torch.Tensor]:
+     func_start = time.time()
+     mode = skill_mode.strip().lower()
+-    if mode not in {"naive", "full_text", "compress"}:
++    if mode not in {"naive", "full_text", "compress", "softskill_init"}:
+         raise ValueError(f"Unsupported skill_mode: {skill_mode}")
+ 
+     # print(f"system_text={system_text}...")
+@@ -820,6 +822,47 @@ def generate_with_skills(
+ 
+         if not user_segments:
+             user_segments = [" "]
++    elif mode == "softskill_init":
++        # Untrained SoftSkill vectors in the same <skill> slot SKIM uses for its soft tokens.
++        if corpus is None:
++            raise ValueError("skill_mode=softskill_init requires skill corpus")
++        if softskill_init == "exact":
++            # Tokenize the full_text user string once and cut it at the skill's character span,
++            # so the input embeddings equal full_text's exactly (a token merging across the
++            # skill boundary, e.g. ".\n\n", goes with the skill).
++            full = ""
++            spans: list[tuple[int, int]] = []
++            for kind, value in parsed:
++                if kind == "text":
++                    full += value
++                    continue
++                skill_text = resolve_skill_text(value, corpus, cache)
++                spans.append((len(full), len(full) + len(skill_text)))
++                full += skill_text
++            enc = model.llm_tokenizer(full, add_special_tokens=False, return_offsets_mapping=True)
++            ids, offsets = enc["input_ids"], enc["offset_mapping"]
++            cuts = [0]
++            for cs, ce in spans:
++                cuts.append(next(i for i, (s, _) in enumerate(offsets) if s >= cs))
++                cuts.append(next((i for i, (s, _) in enumerate(offsets) if s >= ce), len(ids)))
++            cuts.append(len(ids))
++            with torch.no_grad():
++                for lo, hi in zip(cuts[:-1], cuts[1:]):
++                    if hi > lo:
++                        user_segments.append(emb_layer(torch.tensor(ids[lo:hi], device=llm_device, dtype=torch.long)))
++        else:
++            from softskill_vectors import build_skill_vectors
++
++            for kind, value in parsed:
++                if kind == "text":
++                    if value:
++                        user_segments.append(value)
++                    continue
++                user_segments.append(
++                    build_skill_vectors(model, value, resolve_skill_text(value, corpus, cache), softskill_init, k)
++                )
++        if not user_segments:
++            user_segments = [" "]
+     else:
+         if corpus is None:
+             raise ValueError("skill_mode=compress requires skill corpus")
+@@ -904,7 +947,7 @@ def generate_with_skills(
+     if mode == "compress" and not user_segments:
+         user_segments = [" "]
+ 
+-    if mode != "compress":
++    if mode not in {"compress", "softskill_init"}:
+         # For non-compress modes, guarantee plain-text segments.
+         user_segments = [str(seg) for seg in user_segments]
+ 
+@@ -917,7 +960,7 @@ def generate_with_skills(
+     if mode == "naive":
+         user_segments = [SKILL_TAG_PATTERN.sub("", str(user_segments[0])).strip() or " "]
+ 
+-    if mode != "compress" and isinstance(user_segments, list) and len(user_segments) == 1:
++    if mode not in {"compress", "softskill_init"} and isinstance(user_segments, list) and len(user_segments) == 1:
+         user_segments = [str(user_segments[0])]
+ 
+     if mode == "compress" and not user_segments:
+@@ -967,6 +1010,9 @@ def generate_with_skills(
+     }
+     if bad_words_ids is not None:
+         gen_kwargs["bad_words_ids"] = bad_words_ids
++    if stop_strings:
++        gen_kwargs["stop_strings"] = list(stop_strings)
++        gen_kwargs["tokenizer"] = model.llm_tokenizer
+     if do_sample:
+         gen_kwargs["temperature"] = float(temperature)
+         gen_kwargs["top_p"] = float(top_p)
+diff --git a/code/utils/prompts.py b/code/utils/prompts.py
+index 7345d89..52a9655 100644
+--- a/code/utils/prompts.py
++++ b/code/utils/prompts.py
+@@ -17,6 +17,7 @@ def _apply_chat_template(tokenizer, messages: list[dict[str, str]]):
+             tokenize=True,
+             add_generation_prompt=True,
+             return_tensors="pt",
++            return_dict=False,
+             enable_thinking=False,
+         )
+     except TypeError:
+@@ -26,6 +27,7 @@ def _apply_chat_template(tokenizer, messages: list[dict[str, str]]):
+             tokenize=True,
+             add_generation_prompt=True,
+             return_tensors="pt",
++            return_dict=False,
+         )
+ 
+ 
+diff --git a/skill/run_skill_compiler_inference.py b/skill/run_skill_compiler_inference.py
+index e702a70..516e8ff 100644
+--- a/skill/run_skill_compiler_inference.py
++++ b/skill/run_skill_compiler_inference.py
+@@ -66,11 +66,13 @@ def parse_args() -> argparse.Namespace:
+         "--skill_mode",
+         type=str,
+         default="compress",
+-        choices=["naive", "full_text", "compress"],
++        choices=["naive", "full_text", "compress", "softskill_init"],
+         help="How to inject skills into the model",
+     )
+ 
+     parser.add_argument("--k", type=int, default=64, help="Soft token length per skill")
++    parser.add_argument("--softskill_init", type=str, default="", choices=["", "exact", "trunc", "chunkmean", "winpool", "random"],
++                        help="skill_mode=softskill_init: how untrained vectors are built from the skill token embeddings")
+     parser.add_argument("--max_length", type=int, default=4096, help="Max skill text token length")
+     parser.add_argument("--max_new_tokens", type=int, default=4096, help="Generation length")
+     parser.add_argument("--skill_pad_repeat", action="store_true", help="Repeat skill text 10x before truncation to fill max_length")
+@@ -132,6 +134,7 @@ def parse_args() -> argparse.Namespace:
+ 
+     parser.add_argument("--toolqa_max_steps", type=int, default=20, help="Max ToolQA ReAct steps")
+     parser.add_argument("--toolqa_step_tokens", type=int, default=512, help="Max tokens per ToolQA ReAct step")
++    parser.add_argument("--toolqa_stop_at_observation", action="store_true", help="Stop each ReAct step at the Observation stop string")
+ 
+     parser.add_argument(
+         "--gpus_per_worker",
+@@ -357,7 +360,7 @@ def _inject_skill_block(user_prompt: str, skill_ids: list[str], skill_mode: str,
+     if not skill_ids:
+         return user_prompt
+ 
+-    if skill_mode == "compress":
++    if skill_mode in {"compress", "softskill_init"}:
+         skill_block = "\n---\n".join([f"<skill>{sid}</skill>" for sid in skill_ids])
+     else:
+         skill_texts: list[str] = []
+@@ -389,13 +392,15 @@ def _load_toolqa_examples(skillrag_root: str) -> str:
+         if ext_src.exists() and str(ext_src) not in sys.path:
+             sys.path.insert(0, str(ext_src))
+ 
+-        try:
+-            module = importlib.import_module("skillrag.toolqa.fewshots")
+-            examples = getattr(module, "TOOLQA_EXAMPLES", "")
+-            if isinstance(examples, str) and examples.strip():
+-                return examples
+-        except Exception:
+-            pass
++        for module_name in ("skillrag.toolqa.fewshots", "sragents.toolqa.fewshots"):
++            try:
++                module = importlib.import_module(module_name)
++                examples = getattr(module, "TOOLQA_EXAMPLES", "")
++                if isinstance(examples, str) and examples.strip():
++                    print(f"[ToolQA] few-shot examples from {module_name} ({len(examples)} chars)")
++                    return examples
++            except Exception:
++                pass
+ 
+     return TOOLQA_EXAMPLES
+ 
+@@ -551,6 +556,8 @@ def _run_toolqa_case(
+                 temperature=args.temperature,
+                 top_p=args.top_p,
+                 skill_pad_repeat=args.skill_pad_repeat,
++                stop_strings=[stop_token] if (stop_token and args.toolqa_stop_at_observation) else None,
++                softskill_init=args.softskill_init,
+             )
+             gen_time = time.time() - gen_start
+             del input_embeds
+@@ -669,7 +676,7 @@ def _worker_infer_shard(
+         use_fp16 = _to_bool(args.fp16) or (dataset in {"toolqa"})
+         torch_dtype = torch.bfloat16 if use_fp16 else None
+ 
+-        skip_compressor = (args.skill_mode in {"naive", "full_text"})
++        skip_compressor = (args.skill_mode in {"naive", "full_text", "softskill_init"})
+ 
+         is_toolqa = (dataset == "toolqa")
+         toolqa_device_config = is_toolqa and gpus_per_worker >= 2 and not skip_compressor
+@@ -1027,7 +1034,7 @@ def _run_single_dataset(
+         torch_dtype = torch.bfloat16 if use_fp16 else None
+         print(f"[{dataset}] torch_dtype={torch_dtype}")
+ 
+-        skip_compressor = (args.skill_mode in {"naive", "full_text"})
++        skip_compressor = (args.skill_mode in {"naive", "full_text", "softskill_init"})
+         print(f"[{dataset}] skip_compressor={skip_compressor}")
+ 
+         is_toolqa = (dataset == "toolqa")
+@@ -1094,6 +1101,10 @@ def _run_single_dataset(
+             model = model.to(device)
+ 
+         model.eval()
++        n_lora = sum(1 for name, _ in model.llm.named_modules() if "lora" in name.lower())
++        print(f"[{dataset}] base-model check: lora_modules={n_lora}, compressor_loaded={model.compressor is not None}, meta_keys={sorted(meta)}")
++        if not meta and n_lora:
++            raise RuntimeError("LoRA modules found although no SKIM checkpoint metadata was given")
+ 
+         needs_corpus = args.method != "naive" or args.skill_mode in {"compress", "full_text"}
+         corpus = load_skill_corpus(corpus_path) if needs_corpus else {}
+@@ -1127,8 +1138,7 @@ def _run_single_dataset(
+                     args=args,
+                     model_short_name=model_short_name,
+                 )
+-            row["__order__"] = order_idx
+-            rows.append(row)
++            _append_jsonl(out_path, [row])
+             if bar is not None:
+                 bar.update(1)
+         if bar is not None:

@@ -1,3 +1,6 @@
 [submodule "third_party/SoftSkill"]
 	path = third_party/SoftSkill
 	url = https://github.com/xijia-tao/SoftSkill
+[submodule "third_party/SKIM"]
+	path = third_party/SKIM
+	url = https://github.com/bebr2/SKIM
