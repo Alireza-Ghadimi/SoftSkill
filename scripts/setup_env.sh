@@ -12,16 +12,21 @@ git -C "${REPO}" submodule update --init
 #   qwen3.patch                       opt-in gradient checkpointing (single-round + agentic)
 #   spreadsheet_docker_sandbox.patch  opt-in Docker sandbox for SpreadsheetBench generated code
 #   window_pooled_init.patch          init_strategy text_mean_pool_window (applied after pooled_init)
+# Later patches edit lines touched by earlier ones, so a re-run is detected with a stamp (checksum of
+# the patch set) kept in the submodule's git dir rather than by reverse-checking each patch.
 UP="${REPO}/third_party/SoftSkill"
-for patch in "${REPO}"/patches/*.patch; do
-  if git -C "${UP}" apply --check "${patch}" 2>/dev/null; then
+STAMP="$(git -C "${UP}" rev-parse --absolute-git-dir)/softskill_patches.sha256"
+SUM="$(cat "${REPO}"/patches/*.patch | sha256sum | cut -d' ' -f1)"
+if [[ -f "${STAMP}" && "$(cat "${STAMP}")" == "${SUM}" ]] && ! git -C "${UP}" diff --quiet; then
+  echo "patches already applied to third_party/SoftSkill"
+else
+  for patch in "${REPO}"/patches/*.patch; do
+    git -C "${UP}" apply --check "${patch}" 2>/dev/null || {
+      echo "cannot apply ${patch}; reset the submodule with: git -C third_party/SoftSkill checkout -- ." >&2; exit 1; }
     git -C "${UP}" apply "${patch}" && echo "applied $(basename "${patch}")"
-  elif git -C "${UP}" apply --reverse --check "${patch}" 2>/dev/null; then
-    echo "already applied $(basename "${patch}")"
-  else
-    echo "cannot apply ${patch} to third_party/SoftSkill" >&2; exit 1
-  fi
-done
+  done
+  echo "${SUM}" > "${STAMP}"
+fi
 "${REPO}/scripts/toolqa/setup_skim.sh"   # patches/skim/toolqa.patch -> third_party/SKIM
 [[ "${1:-}" == "--patches-only" ]] && { echo "patches applied; stopping (--patches-only)"; exit 0; }
 [[ -x "${ROOT}/venv/bin/python" ]] || virtualenv "${ROOT}/venv"   # python3-venv/ensurepip is not installed on this host
