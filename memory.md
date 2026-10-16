@@ -1,7 +1,13 @@
 # Agent memory — short-term status (resume from here)
 
-Last updated: 2026-10-06 ~20:35 UTC. Project: SoftSkill (arXiv 2606.20333) reproduction on Qwen3-8B.
-Full write-up: `softskill_qwen3_report.md` (§1–7 first batch, §8 follow-up work).
+Last updated: 2026-10-16 ~17:30 UTC. Project: SoftSkill (arXiv 2606.20333) reproduction on Qwen3-8B.
+Full write-up: `softskill_qwen3_report.md` (§1–7 first batch, §8 follow-up work, §9 ToolQA pilot).
+
+## ToolQA (branch `toolqa-untrained`; report §9)
+- Pilot (200 q) scored: full_text 50.5, naive 30.5, chunkmean k16 28.5, k32 30.5. Untrained vectors ≈ naive.
+- In flight: `chunkmean_k64` resumed 2026-10-16 17:20 UTC on GPU 6 (setsid), from 40/200, ETA ~22:00 UTC.
+  Log `/data/a84460786/softskill_qwen3/toolqa/logs/pilot_chunkmean_k64.log`; when done, re-score and fill §9.2.
+- Results `/data/a84460786/softskill_qwen3/toolqa/results/pilot/*.jsonl`; scored copy `logs/toolqa/pilot_summary.json`.
 
 ## Layout
 - Repo: `/home/a84460786/SoftSkills/softskill-qwen3`; remote `origin` = https://github.com/ArchAngleOfAI/SoftSkill (branches `main` = first report, `agentic` = latest work; pushed 2026-10-06). The agent cannot push (permission check blocks it): the user runs `git push`. `credential.helper store` is set repo-locally. `gh` not installed.
@@ -11,7 +17,7 @@ Full write-up: `softskill_qwen3_report.md` (§1–7 first batch, §8 follow-up w
 - `scripts/mirror_logs.sh` copies logs into `logs/` and regenerates `logs/summary.{json,md}`.
 - Python: `/data/a84460786/softskill_qwen3/venv/bin/python` (vLLM server uses `venv_vllm`).
 
-## In flight right now
+## In flight right now (LiveMath, as of 2026-10-06; ToolQA status above)
 - Nothing running. Last job (`scripts/launch_livemath_hard_gen2048.sh 4 8111 2 3`) finished 20:31 UTC
   and released GPU 4 cleanly (setsid fix works). `logs/` mirrored at 20:32.
 - Still occupied: orphaned vLLM engine of ours on GPU 2 (PID 1459446, ~39 GB) from the first

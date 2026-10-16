@@ -292,3 +292,96 @@ Findings:
 2. Done: all seeds finished and `logs/` mirrored (20:32 UTC). Kill the orphaned vLLM engine left on GPU 2 by the first LiveMath launcher (PID 1459446); both launchers are fixed.
 3. Evaluate the trained SoftSkill checkpoints at `max_new_tokens=2048` to get a controlled LiveMath comparison.
 4. Agentic tasks: no-skill baselines are 0/3 on both envs; skill training on them not started.
+
+## 9. ToolQA with untrained SoftSkill vectors (pilot, 2026-10-15 → 16)
+
+Question: do **untrained** SoftSkill vectors help a frozen Qwen3-8B on ToolQA, in the setting of
+SKIM's Table 2? Here, untrained means the ToolQA skill text mean-pooled into k soft tokens, with no
+training.
+
+### 9.1 Setup
+
+- Runner: SKIM's ToolQA ReAct agent (`third_party/SKIM` @ 902de6d, `patches/skim/toolqa.patch`), base
+  Qwen3-8B in bf16, no LoRA or compressor, HF greedy decoding. Few-shots: SR-Agents' 9 examples.
+  Each step stops at `\nObservation N:`.
+- Data: SRA-Bench ToolQA, 1,430 questions with 14 gold skills (average gold-skill length 1,010
+  Qwen3 tokens). Easy and hard are inferred from each domain's lookup and aggregation skill.
+- Scorer: SRA-Bench rule-based normalized EM with numeric and yes/no fallbacks, no LLM judge
+  (`scripts/toolqa/score.py`).
+- Conditions (the user narrowed the list on 2026-10-15):
+  - `naive`: no skill.
+  - `full_text`: the gold skill as text.
+  - `chunkmean_k{16,32,64}`: gold skill split into k chunks, each mean-pooled into one input
+    embedding (`--softskill_init chunkmean --k N`).
+  - `softskill_init=exact` was checked offline and gives bit-identical `inputs_embeds` to `full_text`.
+- Split: the fixed 200-question pilot (`data/toolqa/pilot_ids.json`), stratified by gold skill.
+  The full 1,430-question set has not been run.
+- Runs: one seed per condition (decoding is greedy). Scored output: `logs/toolqa/pilot_summary.json`.
+  Raw results: `/data/a84460786/softskill_qwen3/toolqa/results/pilot/*.jsonl` (not in git).
+
+### 9.2 Results (pilot, n = 200)
+
+| Condition | Acc % (95% CI) | Easy | Hard | vs naive (wins / losses) | Avg steps | Halted % |
+|---|---|---|---|---|---|---|
+| naive | 30.5 [24.5, 37.2] | 46.9 | 14.7 | — | 7.49 | 20.0 |
+| full_text | **50.5** [43.6, 57.4] | 61.2 | 40.2 | 44 / 4 | 5.79 | 12.0 |
+| chunkmean_k16 | 28.5 [22.7, 35.1] | 42.9 | 14.7 | 3 / 7 | 7.32 | 19.5 |
+| chunkmean_k32 | 30.5 [24.5, 37.2] | 42.9 | 18.6 | 7 / 7 | 7.33 | 20.0 |
+| chunkmean_k64 | *running: 40/200 done* | | | 1 / 1 on those 40 | | |
+
+The k64 run died at 01:26 UTC on Oct 16, at 40/200, with no traceback. It was resumed on GPU 6 at
+17:20 UTC with `--resume`. Its first 40 answers score 32.5%, the same as naive on the same 40 questions.
+
+Per gold skill (accuracy %, n = 14 except toolqa_010 with n = 18):
+
+| Skill | Domain | Type | naive | full_text | k16 | k32 |
+|---|---|---|---|---|---|---|
+| toolqa_000 | scirex | easy | 0 | 0 | 0 | 0 |
+| toolqa_001 | scirex | hard | 0 | 0 | 0 | 0 |
+| toolqa_002 | flights | easy | 43 | 64 | 36 | 43 |
+| toolqa_003 | flights | hard | 7 | 21 | 7 | 7 |
+| toolqa_004 | airbnb | easy | 64 | 86 | 57 | 50 |
+| toolqa_005 | airbnb | hard | 14 | 64 | 14 | 14 |
+| toolqa_006 | yelp | easy | 93 | 93 | 86 | 79 |
+| toolqa_007 | yelp | hard | 50 | 86 | 50 | 71 |
+| toolqa_008 | coffee | easy | 71 | 100 | 64 | 64 |
+| toolqa_009 | agenda | easy | 29 | 64 | 21 | 29 |
+| toolqa_010 | coffee | hard | 0 | 78 | 6 | 11 |
+| toolqa_011 | agenda | hard | 0 | 0 | 0 | 0 |
+| toolqa_012 | dblp | easy | 29 | 21 | 36 | 36 |
+| toolqa_013 | dblp | hard | 36 | 21 | 29 | 29 |
+
+### 9.3 Findings
+
+- **The skill text helps a lot.** full_text gains 20 points over naive, wins 44 questions and loses 4.
+  Most of the gain is on hard questions (+25.5), especially coffee (toolqa_010: 0 → 78) and airbnb hard
+  (14 → 64). dblp is the only domain where the text skill hurts.
+- **Untrained chunk-mean vectors give nothing.** k16 is 2 points below naive and k32 equals it. The
+  paired win/loss counts (3/7, 7/7) are what noise would give. The only gains are small ones on some
+  hard skills (yelp hard 50 → 71, coffee hard 0 → 11 at k32), and easy questions go down instead.
+- The vectors make the agent's output slightly cleaner. Unparseable steps drop from 34% to 28%,
+  but step counts and halting rates stay at naive levels, so the pooled vectors don't carry the
+  procedure the text skill provides.
+- This matches the LiveMath result in §8.4: untrained pooled p0 does not reliably beat no skill.
+  Any SoftSkill benefit on ToolQA would have to come from training.
+
+### 9.4 Caveats
+
+- These are pilot numbers (200 of 1,430 questions). The 95% CIs are about ±6.5 points.
+- The ReAct parser keeps only the first `Action` line, so multi-line `PythonInterpreter` calls are
+  invalid. SR-Agents has the same behaviour, and it affects all conditions equally.
+- scirex and agenda-hard are 0 for every condition, so they add no information at this budget.
+- The toolqa runner's "fp16" flag actually loads bf16.
+- Several runs crashed and were relaunched by watcher scripts (`--resume` appends per question).
+  The k64 crash lined up with the naive → k32 GPU handoff, so the cause is most likely the handoff
+  script, not the model.
+
+### 9.5 Next steps
+
+1. Finish k64 (resumed on GPU 6, about 4–5 h), then re-score with
+   `scripts/toolqa/score.py --sra_root <SR-Agents> --results <results/pilot/*.jsonl>`.
+2. Decide whether a full 1,430-question run is worth it. Estimated cost per GPU: about 14 h for
+   naive and about 48 h for full_text. Given the pilot, it is probably only worth it for naive,
+   full_text and the best k.
+3. Trained SoftSkill vectors on ToolQA have not been tried yet. That is the comparison that matters
+   for SKIM Table 2.
