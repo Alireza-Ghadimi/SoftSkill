@@ -26,7 +26,14 @@ TEST_KEYS = {  # mode -> (summary key prefix, results.jsonl relative path)
     "hard": ("plain_test", "eval/plain/valid_unseen/results.jsonl"),
 }
 VAL_KEYS = {"init": "init_valid_seen", "init_maxpool": "init_valid_seen", "init_meanpool": "init_valid_seen", "noskill": "plain_valid_seen", "hard": "plain_valid_seen"}
-MODEL_PATHS = {"qwen3_8b": "/data/models/huggingface/qwen3-8b", "qwen35_4b": "/data/models/library/Qwen3.5-4B"}
+MODEL_PATH_ENV = {"qwen3_8b": "QWEN3_8B_PATH", "qwen35_4b": "QWEN35_4B_PATH"}
+
+
+def model_path(tag: str) -> str:
+    env = MODEL_PATH_ENV[tag]
+    if not os.environ.get(env):
+        raise SystemExit(f"set {env} to the {tag} weights directory (needed for its tokenizer)")
+    return os.environ[env]
 MAX_NEW = {"searchqa": 64, "livemath": 16}
 
 
@@ -75,7 +82,8 @@ def fmt(values: list[float]) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--root", default="/data/a84460786/softskill_qwen3")
+    ap.add_argument("--root", default=os.environ.get("SOFTSKILL_ROOT"), required="SOFTSKILL_ROOT" not in os.environ,
+                    help="storage directory with results/runs (default: $SOFTSKILL_ROOT)")
     ap.add_argument("--out_dir", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs"))
     args = ap.parse_args()
 
@@ -113,7 +121,7 @@ def main() -> None:
         rows = load_jsonl(os.path.join(run_dir, rel))
         rec["n_test"] = len(rows)
         if rows:
-            tok = tokenizers.setdefault(info["model"], AutoTokenizer.from_pretrained(MODEL_PATHS[info["model"]]))
+            tok = tokenizers.setdefault(info["model"], AutoTokenizer.from_pretrained(model_path(info["model"])))
             lens = [len(tok(str(r.get("response", "")), add_special_tokens=False)["input_ids"]) for r in rows]
             rec["avg_gen_tokens"] = statistics.mean(lens)
             rec["frac_hit_max_new_tokens"] = sum(n >= info["max_new"] for n in lens) / len(lens)

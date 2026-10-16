@@ -7,6 +7,7 @@ Run from third_party/SKIM with scripts/toolqa on PYTHONPATH (see run_toolqa.sh).
 """
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from skillrag_vendor.toolqa.react import ReActAgent  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--sra_root", required=True)
-ap.add_argument("--llm", default="/data/models/huggingface/qwen3-8b")
+ap.add_argument("--llm", default=os.environ.get("QWEN3_8B_PATH"), required="QWEN3_8B_PATH" not in os.environ)
 args = ap.parse_args()
 
 sys.path.insert(0, str(Path(args.sra_root) / "src"))

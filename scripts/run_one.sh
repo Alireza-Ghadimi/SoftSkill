@@ -24,12 +24,12 @@ set -euo pipefail
 TASK=$1; POS=$2; SEED=$3; MODE=$4; MODEL_TAG=$5; GPU=$6; shift 6
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UP="${REPO}/third_party/SoftSkill"
-ROOT="${SOFTSKILL_ROOT:-/data/a84460786/softskill_qwen3}"
+ROOT="${SOFTSKILL_ROOT:?set SOFTSKILL_ROOT to your storage directory (datasets, checkpoints, results, venvs)}"
 PY="${ROOT}/venv/bin/python"
 
 case "${MODEL_TAG}" in
-  qwen3_8b)  MODEL=/data/models/huggingface/qwen3-8b ;;
-  qwen35_4b) MODEL=/data/models/library/Qwen3.5-4B ;;
+  qwen3_8b)  MODEL="${QWEN3_8B_PATH:?set QWEN3_8B_PATH to the Qwen3-8B weights directory}" ;;
+  qwen35_4b) MODEL="${QWEN35_4B_PATH:?set QWEN35_4B_PATH to the Qwen3.5-4B weights directory}" ;;
   *) echo "unknown model tag ${MODEL_TAG}" >&2; exit 1 ;;
 esac
 case "${TASK}" in

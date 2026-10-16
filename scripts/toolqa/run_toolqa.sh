@@ -7,11 +7,12 @@ GPU="$1"; SPLIT="$2"; MODE="$3"; TAG="$4"; shift 4
 [[ "${GPU}" == "0" ]] && { echo "refusing GPU 0" >&2; exit 1; }
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-ROOT=/data/a84460786/softskill_qwen3/toolqa
+ROOT="${SOFTSKILL_ROOT:?set SOFTSKILL_ROOT to your storage directory (datasets, checkpoints, results, venvs)}/toolqa"
 export TMPDIR="${ROOT}/tmp" HF_HOME="${ROOT}/data/hf_home" TOOLQA_EMBED_CACHE_DIR="${ROOT}/data/embed_cache"
 export CUDA_VISIBLE_DEVICES="${GPU}" TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
 export PYTHONPATH="${REPO}/scripts/toolqa${PYTHONPATH:+:${PYTHONPATH}}"  # softskill_vectors.py
-PY=/data/a84460786/softskill_qwen3/venv/bin/python
+PY="${SOFTSKILL_ROOT}/venv/bin/python"
+LLM="${QWEN3_8B_PATH:?set QWEN3_8B_PATH to the Qwen3-8B weights directory}"
 SRA="${ROOT}/data/SR-Agents"
 mkdir -p "${ROOT}/data/no_checkpoint" "${ROOT}/results/${SPLIT}" "${ROOT}/logs"
 
@@ -29,7 +30,7 @@ echo "GPU=${GPU} split=${SPLIT} mode=${MODE} method=${METHOD} -> ${OUT}" | tee -
 cd "${REPO}/third_party/SKIM"
 "${PY}" skill/run_skill_compiler_inference.py \
   --checkpoint "${ROOT}/data/no_checkpoint" \
-  --llm_model /data/models/huggingface/qwen3-8b --compressor_model none \
+  --llm_model "${LLM}" --compressor_model none \
   --dataset toolqa --method "${METHOD}" --skill_mode "${MODE}" \
   --skillrag_root "${SRA}" --instances_dir "${INST}" \
   --corpus_path "${SRA}/data/bench/corpus/corpus.json" \

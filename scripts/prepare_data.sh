@@ -3,7 +3,7 @@
 set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UP="${REPO}/third_party/SoftSkill"
-ROOT="${SOFTSKILL_ROOT:-/data/a84460786/softskill_qwen3}"
+ROOT="${SOFTSKILL_ROOT:?set SOFTSKILL_ROOT to your storage directory (datasets, checkpoints, results, venvs)}"
 PY="${ROOT}/venv/bin/python"
 export HF_HOME="${ROOT}/data/hf_cache"
 cd "${ROOT}"

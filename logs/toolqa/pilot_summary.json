@@ -1,6 +1,6 @@
 [
  {
-  "file": "/data/a84460786/softskill_qwen3/toolqa/results/pilot/naive.jsonl",
+  "file": "$SOFTSKILL_ROOT/toolqa/results/pilot/naive.jsonl",
   "n": 200,
   "correct": 61,
   "accuracy": 30.5,
@@ -2705,7 +2705,7 @@
   ]
  },
  {
-  "file": "/data/a84460786/softskill_qwen3/toolqa/results/pilot/full_text.jsonl",
+  "file": "$SOFTSKILL_ROOT/toolqa/results/pilot/full_text.jsonl",
   "n": 200,
   "correct": 101,
   "accuracy": 50.5,
@@ -5410,7 +5410,7 @@
   ]
  },
  {
-  "file": "/data/a84460786/softskill_qwen3/toolqa/results/pilot/chunkmean_k16.jsonl",
+  "file": "$SOFTSKILL_ROOT/toolqa/results/pilot/chunkmean_k16.jsonl",
   "n": 200,
   "correct": 57,
   "accuracy": 28.5,
@@ -8115,7 +8115,7 @@
   ]
  },
  {
-  "file": "/data/a84460786/softskill_qwen3/toolqa/results/pilot/chunkmean_k32.jsonl",
+  "file": "$SOFTSKILL_ROOT/toolqa/results/pilot/chunkmean_k32.jsonl",
   "n": 200,
   "correct": 61,
   "accuracy": 30.5,
@@ -10820,7 +10820,7 @@
   ]
  },
  {
-  "file": "/data/a84460786/softskill_qwen3/toolqa/results/pilot/chunkmean_k64.jsonl",
+  "file": "$SOFTSKILL_ROOT/toolqa/results/pilot/chunkmean_k64.jsonl",
   "n": 40,
   "correct": 13,
   "accuracy": 32.5,

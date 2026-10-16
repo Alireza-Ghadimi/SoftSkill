@@ -5,8 +5,8 @@
 set -uo pipefail
 GPU=${1:-4}; PORT=${2:-8111}; SEEDS=("${@:3}"); (( ${#SEEDS[@]} )) || SEEDS=(2 3)
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ROOT="${SOFTSKILL_ROOT:-/data/a84460786/softskill_qwen3}"
-MODEL=/data/models/huggingface/qwen3-8b
+ROOT="${SOFTSKILL_ROOT:?set SOFTSKILL_ROOT to your storage directory (datasets, checkpoints, results, venvs)}"
+MODEL="${QWEN3_8B_PATH:?set QWEN3_8B_PATH to the Qwen3-8B weights directory}"
 SERVER_LOG="${ROOT}/results/logs/vllm_server_qwen3_8b_gpu${GPU}_hard.log"
 export TMPDIR="${ROOT}/tmp" HF_HOME="${ROOT}/data/hf_cache"
 

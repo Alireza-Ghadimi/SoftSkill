@@ -6,16 +6,16 @@ Full write-up: `softskill_qwen3_report.md` (§1–7 first batch, §8 follow-up w
 ## ToolQA (branch `toolqa-untrained`; report §9)
 - Pilot (200 q) scored: full_text 50.5, naive 30.5, chunkmean k16 28.5, k32 30.5. Untrained vectors ≈ naive.
 - In flight: `chunkmean_k64` resumed 2026-10-16 17:20 UTC on GPU 6 (setsid), from 40/200, ETA ~22:00 UTC.
-  Log `/data/a84460786/softskill_qwen3/toolqa/logs/pilot_chunkmean_k64.log`; when done, re-score and fill §9.2.
-- Results `/data/a84460786/softskill_qwen3/toolqa/results/pilot/*.jsonl`; scored copy `logs/toolqa/pilot_summary.json`.
+  Log `$SOFTSKILL_ROOT/toolqa/logs/pilot_chunkmean_k64.log`; when done, re-score and fill §9.2.
+- Results `$SOFTSKILL_ROOT/toolqa/results/pilot/*.jsonl`; scored copy `logs/toolqa/pilot_summary.json`.
 
 ## Layout
-- Repo: `/home/a84460786/SoftSkills/softskill-qwen3`; remote `origin` = https://github.com/ArchAngleOfAI/SoftSkill (branches `main` = first report, `agentic` = latest work; pushed 2026-10-06). The agent cannot push (permission check blocks it): the user runs `git push`. `credential.helper store` is set repo-locally. `gh` not installed.
+- Repo: `<repo>`; remote `origin` = https://github.com/ArchAngleOfAI/SoftSkill (branches `main` = first report, `agentic` = latest work; pushed 2026-10-06). The agent cannot push (permission check blocks it): the user runs `git push`. `credential.helper store` is set repo-locally. `gh` not installed.
 - Upstream code: `third_party/SoftSkill` submodule @ 4fc5300, patched in place by `scripts/setup_env.sh`.
-- Large files (not in git): `/data/a84460786/softskill_qwen3/{data,checkpoints,results,venv,venv_vllm,tmp}`.
-- Run outputs: `/data/.../results/runs/<run>/summary.json`; logs `/data/.../results/logs/`.
+- Large files (not in git): `$SOFTSKILL_ROOT/{data,checkpoints,results,venv,venv_vllm,tmp}`.
+- Run outputs: `$SOFTSKILL_ROOT/results/runs/<run>/summary.json`; logs `$SOFTSKILL_ROOT/results/logs/`.
 - `scripts/mirror_logs.sh` copies logs into `logs/` and regenerates `logs/summary.{json,md}`.
-- Python: `/data/a84460786/softskill_qwen3/venv/bin/python` (vLLM server uses `venv_vllm`).
+- Python: `$SOFTSKILL_ROOT/venv/bin/python` (vLLM server uses `venv_vllm`).
 
 ## In flight right now (LiveMath, as of 2026-10-06; ToolQA status above)
 - Nothing running. Last job (`scripts/launch_livemath_hard_gen2048.sh 4 8111 2 3`) finished 20:31 UTC
@@ -47,7 +47,7 @@ skill_section +3.8 on average but noisy. Trained SoftSkill NOT yet evaluated at 
 4. Suggested next experiment: trained SoftSkill checkpoints at max_new_tokens=2048.
 
 ## Gotchas
-- Shared `/` filesystem fills up: always keep TMPDIR under /data (run_one.sh does this).
+- Shared `/` filesystem fills up: always keep TMPDIR under $SOFTSKILL_ROOT (run_one.sh does this).
 - GPU 0 avoided; other users' jobs share GPUs 0–7 — check `nvidia-smi` before launching.
 - Hard-skill runs: injection_position=prompt_start is passed with an empty prefix (prompt has no
   skill_section marker); run name still says `skill_section`.

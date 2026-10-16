@@ -11,6 +11,7 @@ reported, not counted as wrong, so pilot and partial runs are flagged.
 import argparse
 import json
 import math
+import os
 import re
 import sys
 from collections import defaultdict
@@ -104,7 +105,8 @@ def main() -> None:
     ap.add_argument("--results", nargs="+", required=True)
     ap.add_argument("--skill_len", nargs="*", default=[],
                     help="Per file: 'none', 'text' (Qwen3 tokens of the gold skill) or an integer; default none")
-    ap.add_argument("--tokenizer", default="/data/models/huggingface/qwen3-8b")
+    ap.add_argument("--tokenizer", default=os.environ.get("QWEN3_8B_PATH"),
+                    help="Qwen3-8B tokenizer for --skill_len text (default: $QWEN3_8B_PATH)")
     ap.add_argument("--out", default="")
     args = ap.parse_args()
 
@@ -129,6 +131,8 @@ def main() -> None:
             lens = {}
         elif spec == "text":
             if corpus is None:
+                if not args.tokenizer:
+                    sys.exit("--skill_len text needs --tokenizer or $QWEN3_8B_PATH")
                 from transformers import AutoTokenizer
                 tok = AutoTokenizer.from_pretrained(args.tokenizer)
                 corpus = {s["skill_id"]: s for s in json.load(open(Path(args.sra_root) / "data/bench/corpus/corpus.json"))

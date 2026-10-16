@@ -1,6 +1,6 @@
 # Agentic smoke tests (Qwen3-8B, no skill, 3 TRAIN tasks each)
 
-Generated 2026-10-06 on GPU 2 via the upstream soft-prefix harness (`train_soft_prefix.py`, `train.num_epochs=0`, `soft_prefix.eval_plain_baseline=true`) and the upstream prompt-embeds vLLM server (vLLM 0.31.0, non-thinking, greedy). Full raw files are under `/data/a84460786/softskill_qwen3/results/agentic/smoke/`.
+Generated 2026-10-06 on GPU 2 via the upstream soft-prefix harness (`train_soft_prefix.py`, `train.num_epochs=0`, `soft_prefix.eval_plain_baseline=true`) and the upstream prompt-embeds vLLM server (vLLM 0.31.0, non-thinking, greedy). Full raw files are under `$SOFTSKILL_ROOT/results/agentic/smoke/`.
 
 ## ALFWorld (wall 84 s for 3 games, all envs stepped in parallel)
 
@@ -149,7 +149,7 @@ The code raised an error during execution:
 
 ```
 Traceback (most recent call last):
-  File "/data/a84460786/softskill_qwen3/tmp/tmp899j04kc.py", line 27, in <module>
+  File "$SOFTSKILL_ROOT/tmp/tmp899j04kc.py", line 27, in <module>
     time_obj = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: strptime() argument 1 must be str, not datetime.datetime
@@ -201,7 +201,7 @@ The code raised an error during execution:
 
 ```
 Traceback (most recent call last):
-  File "/data/a84460786/softskill_qwen3/tmp/tmpjkiri7zb.py", line 27, in <module>
+  File "$SOFTSKILL_ROOT/tmp/tmpjkiri7zb.py", line 27, in <module>
     time_obj = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: strptime() argument 1 must be str, not datetime.datetime
@@ -252,7 +252,7 @@ The code raised an error during execution:
 
 ```
 Traceback (most recent call last):
-  File "/data/a84460786/softskill_qwen3/tmp/tmpn74hnmew.py", line 26, in <module>
+  File "$SOFTSKILL_ROOT/tmp/tmpn74hnmew.py", line 26, in <module>
     time_obj = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: strptime() argument 1 must be str, not datetime.datetime

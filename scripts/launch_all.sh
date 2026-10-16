@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Queue all Qwen3-8B Table-1 runs over the given GPUs (one worker per GPU).
-# usage: nohup scripts/launch_all.sh "5 6" > /data/.../results/logs/launch_all.out 2>&1 &
+# usage: nohup scripts/launch_all.sh "5 6" > "$SOFTSKILL_ROOT/results/logs/launch_all.out" 2>&1 &
 set -uo pipefail
 GPUS=(${1:-5 6})
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ROOT="${SOFTSKILL_ROOT:-/data/a84460786/softskill_qwen3}"
+ROOT="${SOFTSKILL_ROOT:?set SOFTSKILL_ROOT to your storage directory (datasets, checkpoints, results, venvs)}"
 QUEUE="${ROOT}/results/logs/queue.txt"
 GC=soft_prefix.gradient_checkpointing=true   # required to fit Qwen3-8B on 40 GB (see patches/qwen3.patch)
 

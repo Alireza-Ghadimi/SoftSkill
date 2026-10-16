@@ -22,15 +22,15 @@ Qwen3-8B. Runs: 2026-10-05 22:17 → 2026-10-06 02:32 UTC. All numbers are from 
 | Item | Value |
 |---|---|
 | Upstream code | `third_party/SoftSkill` (submodule of https://github.com/xijia-tao/SoftSkill), pinned at `4fc53008da110f354746bf36966dc0a2f44d3b92` |
-| Target model | Qwen3-8B, existing checkpoint at `/data/models/huggingface/qwen3-8b` (Qwen3ForCausalLM, hidden 4096, 36 layers) |
-| Sanity-check model | Qwen3.5-4B, existing checkpoint at `/data/models/library/Qwen3.5-4B` |
-| Large files | `/data/a84460786/softskill_qwen3/{data,checkpoints,results,venv}` (not in git) |
+| Target model | Qwen3-8B, existing checkpoint at `$QWEN3_8B_PATH` (Qwen3ForCausalLM, hidden 4096, 36 layers) |
+| Sanity-check model | Qwen3.5-4B, existing checkpoint at `$QWEN35_4B_PATH` |
+| Large files | `$SOFTSKILL_ROOT/{data,checkpoints,results,venv}` (not in git) |
 | Environment | `scripts/setup_env.sh` (torch 2.14 cu130, transformers 5.17; fla 0.5.2 + causal-conv1d 1.7.0 for Qwen3.5) |
 | GPUs | 5 and 6 (A100 40 GB), one job per GPU. GPU 0 avoided. |
 | Precision | bf16 (`torch_dtype: auto` on CUDA) |
 | Thinking mode | **Non-thinking.** Upstream hard-codes `enable_thinking=False` in the chat template for training and evaluation. Qwen3-8B uses the same flag, so no change was needed. |
 | Configs | Upstream Table-1 YAMLs, unchanged. Per-run overrides go through `--cfg-options` (see `configs/README.md`). |
-| Git remote | None. The `gh` CLI is not installed on this host, so the repo is local only and was not pushed. |
+| Git remote | https://github.com/Alireza-Ghadimi/SoftSkill (at the time of this first batch the repo was local only). |
 
 ### Data (verified split sizes)
 
@@ -187,8 +187,8 @@ The models differ, so differences are expected.
 2. **Two runs are missing:** LiveMath init-only seed 3 (prompt_start and skill_section). The root
    filesystem (`/`, shared, 547 GB) filled up at about 02:30. Python could not create a temporary
    file and crashed at import (`No usable temporary directory found`). About 440 GB of `/` belongs
-   to directories this account can't read, i.e. other users. Our own data lives on `/data`. This
-   commit makes `run_one.sh` set `TMPDIR` to `/data/a84460786/softskill_qwen3/tmp` so `/tmp` is no
+   to directories this account can't read, i.e. other users. Our own data lives on a separate volume (`$SOFTSKILL_ROOT`). This
+   commit makes `run_one.sh` set `TMPDIR` to `$SOFTSKILL_ROOT/tmp` so `/tmp` is no
    longer used. Both missing runs are init-only baselines that score 0.0 on seeds 1–2 for the reason
    in item 1, so none of the conclusions depend on them.
 3. **`launch_all.sh` logged `rc=0` for the failed runs.** `$?` was read after `$(date)` had already
@@ -200,9 +200,10 @@ The models differ, so differences are expected.
 ## 7. Reproducing
 
 ```bash
-scripts/setup_env.sh            # venv under /data, applies patches/qwen3.patch to the submodule
-scripts/prepare_data.sh         # official splits + skill artifacts under /data/.../data
-nohup scripts/launch_all.sh "5 6" > /data/a84460786/softskill_qwen3/results/logs/launch_all.out 2>&1 &
+export SOFTSKILL_ROOT=/path/to/storage QWEN3_8B_PATH=/path/to/qwen3-8b
+scripts/setup_env.sh            # venvs under $SOFTSKILL_ROOT, applies patches/*.patch to the submodules
+scripts/prepare_data.sh         # official splits + skill artifacts under $SOFTSKILL_ROOT/data
+nohup scripts/launch_all.sh "5 6" > $SOFTSKILL_ROOT/results/logs/launch_all.out 2>&1 &
 scripts/mirror_logs.sh          # refresh logs/ and logs/summary.{json,md}
 ```
 
@@ -317,7 +318,7 @@ training.
 - Split: the fixed 200-question pilot (`data/toolqa/pilot_ids.json`), stratified by gold skill.
   The full 1,430-question set has not been run.
 - Runs: one seed per condition (decoding is greedy). Scored output: `logs/toolqa/pilot_summary.json`.
-  Raw results: `/data/a84460786/softskill_qwen3/toolqa/results/pilot/*.jsonl` (not in git).
+  Raw results: `$SOFTSKILL_ROOT/toolqa/results/pilot/*.jsonl` (not in git).
 
 ### 9.2 Results (pilot, n = 200)
 
