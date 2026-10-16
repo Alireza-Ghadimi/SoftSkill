@@ -27,6 +27,7 @@ TEST_KEYS = {  # mode -> (summary key prefix, results.jsonl relative path)
 }
 VAL_KEYS = {"init": "init_valid_seen", "init_maxpool": "init_valid_seen", "init_meanpool": "init_valid_seen", "noskill": "plain_valid_seen", "hard": "plain_valid_seen"}
 MODEL_PATH_ENV = {"qwen3_8b": "QWEN3_8B_PATH", "qwen35_4b": "QWEN35_4B_PATH"}
+MAX_NEW = {"searchqa": 64, "livemath": 16}
 
 
 def model_path(tag: str) -> str:
@@ -34,7 +35,6 @@ def model_path(tag: str) -> str:
     if not os.environ.get(env):
         raise SystemExit(f"set {env} to the {tag} weights directory (needed for its tokenizer)")
     return os.environ[env]
-MAX_NEW = {"searchqa": 64, "livemath": 16}
 
 
 def last_boxed(text: str) -> str | None:
