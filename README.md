@@ -46,7 +46,7 @@ stratified by gold skill. The SKIM rows are from SKIM's Table 2.
 | Gold skill as full text | **50.5** [43.6, 57.4] | 61.2 | 40.2 |
 | Untrained chunk-mean, k = 16 | 28.5 [22.7, 35.1] | 42.9 | 14.7 |
 | Untrained chunk-mean, k = 32 | 30.5 [24.5, 37.2] | 42.9 | 18.6 |
-| Untrained chunk-mean, k = 64 | in progress | | |
+| Untrained chunk-mean, k = 64 | 29.5 [23.6, 36.2] | 46.9 | 12.8 |
 | No skill (SKIM paper, full 1,430 q) | 28.04 | | |
 | Full text (SKIM paper, full 1,430 q) | 47.97 | | |
 | SKIM Fix-256 (SKIM paper, full 1,430 q) | 35.66 | | |
@@ -61,7 +61,7 @@ the full text skill help.
 
 ## Status and next steps
 
-- ToolQA 64-vector pilot: running (101 of 200 questions done on 2026-10-16).
+- ToolQA 64-vector pilot: done, 29.5% (naive 30.5%); untrained vectors match no skill at k = 16, 32 and 64.
 - Trained SoftSkill on ToolQA: not started (needs a per-skill train/test split).
 - Full 1,430-question ToolQA run: pending.
 - Agentic tasks (ALFWorld, SpreadsheetBench): only no-skill smoke tests so far (report §8.2).

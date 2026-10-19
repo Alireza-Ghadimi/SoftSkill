@@ -328,41 +328,42 @@ training.
 | full_text | **50.5** [43.6, 57.4] | 61.2 | 40.2 | 44 / 4 | 5.79 | 12.0 |
 | chunkmean_k16 | 28.5 [22.7, 35.1] | 42.9 | 14.7 | 3 / 7 | 7.32 | 19.5 |
 | chunkmean_k32 | 30.5 [24.5, 37.2] | 42.9 | 18.6 | 7 / 7 | 7.33 | 20.0 |
-| chunkmean_k64 | *running: 40/200 done* | | | 1 / 1 on those 40 | | |
+| chunkmean_k64 | 29.5 [23.6, 36.2] | 46.9 | 12.8 | 4 / 6 | 7.28 | 19.5 |
 
 The k64 run died at 01:26 UTC on Oct 16, at 40/200, with no traceback. It was resumed on GPU 6 at
-17:20 UTC with `--resume`. Its first 40 answers score 32.5%, the same as naive on the same 40 questions.
+17:20 UTC with `--resume` and finished at 22:49 UTC. All five conditions are complete (200/200).
 
 Per gold skill (accuracy %, n = 14 except toolqa_010 with n = 18):
 
-| Skill | Domain | Type | naive | full_text | k16 | k32 |
-|---|---|---|---|---|---|---|
-| toolqa_000 | scirex | easy | 0 | 0 | 0 | 0 |
-| toolqa_001 | scirex | hard | 0 | 0 | 0 | 0 |
-| toolqa_002 | flights | easy | 43 | 64 | 36 | 43 |
-| toolqa_003 | flights | hard | 7 | 21 | 7 | 7 |
-| toolqa_004 | airbnb | easy | 64 | 86 | 57 | 50 |
-| toolqa_005 | airbnb | hard | 14 | 64 | 14 | 14 |
-| toolqa_006 | yelp | easy | 93 | 93 | 86 | 79 |
-| toolqa_007 | yelp | hard | 50 | 86 | 50 | 71 |
-| toolqa_008 | coffee | easy | 71 | 100 | 64 | 64 |
-| toolqa_009 | agenda | easy | 29 | 64 | 21 | 29 |
-| toolqa_010 | coffee | hard | 0 | 78 | 6 | 11 |
-| toolqa_011 | agenda | hard | 0 | 0 | 0 | 0 |
-| toolqa_012 | dblp | easy | 29 | 21 | 36 | 36 |
-| toolqa_013 | dblp | hard | 36 | 21 | 29 | 29 |
+| Skill | Domain | Type | naive | full_text | k16 | k32 | k64 |
+|---|---|---|---|---|---|---|---|
+| toolqa_000 | scirex | easy | 0 | 0 | 0 | 0 | 0 |
+| toolqa_001 | scirex | hard | 0 | 0 | 0 | 0 | 0 |
+| toolqa_002 | flights | easy | 43 | 64 | 36 | 43 | 50 |
+| toolqa_003 | flights | hard | 7 | 21 | 7 | 7 | 7 |
+| toolqa_004 | airbnb | easy | 64 | 86 | 57 | 50 | 57 |
+| toolqa_005 | airbnb | hard | 14 | 64 | 14 | 14 | 14 |
+| toolqa_006 | yelp | easy | 93 | 93 | 86 | 79 | 79 |
+| toolqa_007 | yelp | hard | 50 | 86 | 50 | 71 | 43 |
+| toolqa_008 | coffee | easy | 71 | 100 | 64 | 64 | 71 |
+| toolqa_009 | agenda | easy | 29 | 64 | 21 | 29 | 36 |
+| toolqa_010 | coffee | hard | 0 | 78 | 6 | 11 | 6 |
+| toolqa_011 | agenda | hard | 0 | 0 | 0 | 0 | 0 |
+| toolqa_012 | dblp | easy | 29 | 21 | 36 | 36 | 36 |
+| toolqa_013 | dblp | hard | 36 | 21 | 29 | 29 | 21 |
 
 ### 9.3 Findings
 
 - **The skill text helps a lot.** full_text gains 20 points over naive, wins 44 questions and loses 4.
   Most of the gain is on hard questions (+25.5), especially coffee (toolqa_010: 0 → 78) and airbnb hard
   (14 → 64). dblp is the only domain where the text skill hurts.
-- **Untrained chunk-mean vectors give nothing.** k16 is 2 points below naive and k32 equals it. The
-  paired win/loss counts (3/7, 7/7) are what noise would give. The only gains are small ones on some
-  hard skills (yelp hard 50 → 71, coffee hard 0 → 11 at k32), and easy questions go down instead.
-- The vectors make the agent's output slightly cleaner. Unparseable steps drop from 34% to 28%,
-  but step counts and halting rates stay at naive levels, so the pooled vectors don't carry the
-  procedure the text skill provides.
+- **Untrained chunk-mean vectors give nothing, at any k.** k16 is 2 points below naive, k32 equals
+  it and k64 is 1 point below (28.5 / 30.5 / 29.5 vs 30.5). The paired win/loss counts (3/7, 7/7,
+  4/6) are what noise would give, and more vectors do not help. The only gains are small ones on
+  some hard skills at k32 (yelp hard 50 → 71, coffee hard 0 → 11), which k64 does not keep (43, 6).
+- The vectors make the agent's output slightly cleaner. Unparseable steps drop from 34% to 28% at
+  k16/k32 (32% at k64), but step counts and halting rates stay at naive levels, so the pooled vectors
+  don't carry the procedure the text skill provides.
 - This matches the LiveMath result in §8.4: untrained pooled p0 does not reliably beat no skill.
   Any SoftSkill benefit on ToolQA would have to come from training.
 
@@ -379,10 +380,10 @@ Per gold skill (accuracy %, n = 14 except toolqa_010 with n = 18):
 
 ### 9.5 Next steps
 
-1. Finish k64 (resumed on GPU 6, about 4–5 h), then re-score with
+1. Done: k64 finished (2026-10-16 22:49 UTC) and all five conditions were re-scored together with
    `scripts/toolqa/score.py --sra_root <SR-Agents> --results <results/pilot/*.jsonl>`.
 2. Decide whether a full 1,430-question run is worth it. Estimated cost per GPU: about 14 h for
    naive and about 48 h for full_text. Given the pilot, it is probably only worth it for naive,
-   full_text and the best k.
+   full_text and the best k (k32, which only ties naive).
 3. Trained SoftSkill vectors on ToolQA have not been tried yet. That is the comparison that matters
    for SKIM Table 2.

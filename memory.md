@@ -1,12 +1,12 @@
 # Agent memory — short-term status (resume from here)
 
-Last updated: 2026-10-16 ~17:30 UTC. Project: SoftSkill (arXiv 2606.20333) reproduction on Qwen3-8B.
+Last updated: 2026-10-19 ~14:00 UTC. Project: SoftSkill (arXiv 2606.20333) reproduction on Qwen3-8B.
 Full write-up: `softskill_qwen3_report.md` (§1–7 first batch, §8 follow-up work, §9 ToolQA pilot).
 
-## ToolQA (branch `toolqa-untrained`; report §9)
-- Pilot (200 q) scored: full_text 50.5, naive 30.5, chunkmean k16 28.5, k32 30.5. Untrained vectors ≈ naive.
-- In flight: `chunkmean_k64` resumed 2026-10-16 17:20 UTC on GPU 6 (setsid), from 40/200, ETA ~22:00 UTC.
-  Log `$SOFTSKILL_ROOT/toolqa/logs/pilot_chunkmean_k64.log`; when done, re-score and fill §9.2.
+## ToolQA (report §9)
+- Pilot (200 q) complete for all 5 conditions: full_text 50.5, naive 30.5, chunkmean k16 28.5, k32 30.5,
+  k64 29.5. Untrained vectors ≈ naive at every k. Nothing running.
+- Next: decide on the full 1,430-q run; trained SoftSkill on ToolQA (needs a per-skill train/test split).
 - Results `$SOFTSKILL_ROOT/toolqa/results/pilot/*.jsonl`; scored copy `logs/toolqa/pilot_summary.json`.
 
 ## Layout
